@@ -1,2 +1,2 @@
 # hardware-tcp
-## TCP Connection client
+## TCP connection client
