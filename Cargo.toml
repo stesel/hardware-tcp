@@ -3,6 +3,10 @@ name = "hardware-tcp"
 version = "0.1.0"
 authors = ["Leonid Trofymchuk <ltrofymchuk@evolutiongaming.com>"]
 edition = "2018"
+description = "TCP Connection client"
+homepage = "https://github.com/stesel/hardware-tcp"
+repository = "git@github.com:stesel/hardware-tcp.git"
+readme = "README.md"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
