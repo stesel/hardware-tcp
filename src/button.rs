@@ -10,14 +10,29 @@ use std::net::TcpStream;
 use std::io::{BufReader, BufRead};
 use regex::{Regex, Captures};
 
-/// Extension for Capture
-trait GetButtonValueFromCaptures<T> {
-    fn get_value(&self, index: usize) -> T;
+#[derive(Debug)]
+enum ButtonState {
+    Released = 0,
+    Pressed = 1,
+    Between = 2,
 }
 
-impl GetButtonValueFromCaptures<u8> for Captures<'_> {
-    fn get_value(&self, index: usize) -> u8 {
-        return self.get(index).unwrap().as_str().parse::<u8>().unwrap()
+/// Extension for Capture
+trait GetButtonValueFromCaptures {
+    fn get_index(&self) -> u8;
+    fn get_state(&self) -> ButtonState;
+}
+
+impl GetButtonValueFromCaptures for Captures<'_> {
+    fn get_index(&self) -> u8 {
+        return self.get(1).unwrap().as_str().parse::<u8>().unwrap();
+    }
+    fn get_state(&self) -> ButtonState {
+        match self.get(2).unwrap().as_str().parse::<u8>().unwrap() {
+            0 => ButtonState::Released,
+            1 => ButtonState::Pressed,
+            2 | _ => ButtonState::Between,
+        }
     }
 }
 ///
@@ -40,9 +55,9 @@ pub fn create_connection(port: &str) {
                         let pattern = Regex::new(r"\{(\d+),\s*(\d+)}\r\n").unwrap();
                         match pattern.captures(&data) {
                             Some(captures) => {
-                                let index = captures.get_value(1);
-                                let state = captures.get_value(2);
-                                println!("Package index {}, state: {}", index, state);
+                                let index = captures.get_index();
+                                let state = captures.get_state();
+                                println!("Package index {}, state: {:?}", index, state);
                             },
                             None => println!("Irrelevant data: {:?}", data),
                         }
