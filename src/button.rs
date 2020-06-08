@@ -8,7 +8,6 @@
 //!
 use std::net::TcpStream;
 use std::io::{BufReader, BufRead};
-use regex::{Regex, Captures};
 
 #[derive(Debug)]
 enum ButtonState {
@@ -18,23 +17,42 @@ enum ButtonState {
 }
 
 /// Extension for Capture
-trait GetButtonValueFromCaptures {
-    fn get_index(&self) -> u8;
-    fn get_state(&self) -> ButtonState;
+trait ButtonValuable {
+    fn new(raw:&str) -> Self;
 }
 
-impl GetButtonValueFromCaptures for Captures<'_> {
-    fn get_index(&self) -> u8 {
-        return self.get(1).unwrap().as_str().parse::<u8>().unwrap();
-    }
-    fn get_state(&self) -> ButtonState {
-        match self.get(2).unwrap().as_str().parse::<u8>().unwrap() {
-            0 => ButtonState::Released,
-            1 => ButtonState::Pressed,
-            2 | _ => ButtonState::Between,
+struct ButtonPackage {
+    index: u8,
+    state: ButtonState,
+}
+
+impl ButtonValuable for ButtonPackage {
+    fn new(raw: &str) -> ButtonPackage {
+        let trimmed = raw
+            .replace("{", "")
+            .replace("}", "")
+            .replace("\r\n", "");
+
+        let vec: Vec<&str> = trimmed.split(",").collect::<Vec<&str>>();
+
+        let index: u8 = match vec.get(0).unwrap().parse::<u8>() {
+            Ok(index) => index,
+            Err(_) => 0,
+        };
+
+        let state: ButtonState = match vec.get(1) {
+            Some(&"1") => ButtonState::Pressed,
+            Some(&"2") => ButtonState::Between,
+            Some(&"0") | _ => ButtonState::Released,
+        };
+
+        return ButtonPackage {
+            index,
+            state,
         }
     }
 }
+
 ///
 
 /// Create button client connection
@@ -52,15 +70,8 @@ pub fn create_connection(port: &str) {
                             break;
                         }
 
-                        let pattern = Regex::new(r"\{(\d+),\s*(\d+)}\r\n").unwrap();
-                        match pattern.captures(&data) {
-                            Some(captures) => {
-                                let index = captures.get_index();
-                                let state = captures.get_state();
-                                println!("Package index {}, state: {:?}", index, state);
-                            },
-                            None => println!("Irrelevant data: {:?}", data),
-                        }
+                        let package: ButtonPackage = ButtonPackage::new(&data);
+                        println!("ButtonPackage: {} {:?}", package.index, package.state);
                     }
                     Err(e) => {
                         println!("Data error: {:?}", e);
@@ -69,7 +80,7 @@ pub fn create_connection(port: &str) {
             }
         }
         Err(e) => {
-            println!("Failed to connect: {}", e);
+            println!("Failed to connect: {:?}", e);
         }
     }
 
