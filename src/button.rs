@@ -10,18 +10,19 @@ use std::net::TcpStream;
 use std::io::{BufReader, BufRead};
 
 #[derive(Debug)]
+#[derive(PartialEq)]
 enum ButtonState {
     Released = 0,
     Pressed = 1,
     Between = 2,
 }
 
-/// Extension for Capture
-trait ButtonValuable {
+/// Extension for button package
+pub trait ButtonValuable {
     fn new(raw:&str) -> Self;
 }
 
-struct ButtonPackage {
+pub struct ButtonPackage {
     index: u8,
     state: ButtonState,
 }
@@ -29,9 +30,9 @@ struct ButtonPackage {
 impl ButtonValuable for ButtonPackage {
     fn new(raw: &str) -> ButtonPackage {
         let trimmed = raw
+            .replace("\r\n", "")
             .replace("{", "")
-            .replace("}", "")
-            .replace("\r\n", "");
+            .replace("}", "");
 
         let vec: Vec<&str> = trimmed.split(",").collect::<Vec<&str>>();
 
@@ -41,15 +42,48 @@ impl ButtonValuable for ButtonPackage {
         };
 
         let state: ButtonState = match vec.get(1) {
-            Some(&"1") => ButtonState::Pressed,
-            Some(&"2") => ButtonState::Between,
-            Some(&"0") | _ => ButtonState::Released,
+            Some(&"1") | Some(&"01") => ButtonState::Pressed,
+            Some(&"2") | Some(&"02") => ButtonState::Between,
+            _ => ButtonState::Released,
         };
 
         return ButtonPackage {
             index,
             state,
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn empty_data() {
+        let package = ButtonPackage::new("");
+        assert_eq!(0, package.index);
+        assert_eq!(ButtonState::Released, package.state);
+    }
+
+    #[test]
+    fn wrong_data() {
+        let package = ButtonPackage::new("Welcome");
+        assert_eq!(0, package.index);
+        assert_eq!(ButtonState::Released, package.state);
+    }
+
+    #[test]
+    fn expected_data() {
+        let package = ButtonPackage::new("{8,1}\r\n");
+        assert_eq!(8, package.index);
+        assert_eq!(ButtonState::Pressed, package.state);
+    }
+
+    #[test]
+    fn o_start_data() {
+        let package = ButtonPackage::new("{09,02}\r\n");
+        assert_eq!(9, package.index);
+        assert_eq!(ButtonState::Between, package.state);
     }
 }
 
